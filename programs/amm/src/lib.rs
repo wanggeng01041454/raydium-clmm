@@ -529,19 +529,20 @@ pub mod amm_v3 {
         )
     }
 
-    /// Swap token for as much as possible of another token across the path provided, base input
-    ///
-    /// # Arguments
-    ///
-    /// * `ctx` - The context of accounts
-    /// * `amount_in` - Token amount to be swapped in
-    /// * `amount_out_minimum` - Panic if output amount is below minimum amount. For slippage.
-    ///
-    pub fn swap_router_base_in<'a, 'b, 'c: 'info, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, SwapRouterBaseIn<'info>>,
-        amount_in: u64,
-        amount_out_minimum: u64,
-    ) -> Result<()> {
-        instructions::swap_router_base_in(ctx, amount_in, amount_out_minimum)
-    }
+    //== drop this method
+    // /// Swap token for as much as possible of another token across the path provided, base input
+    // ///
+    // /// # Arguments
+    // ///
+    // /// * `ctx` - The context of accounts
+    // /// * `amount_in` - Token amount to be swapped in
+    // /// * `amount_out_minimum` - Panic if output amount is below minimum amount. For slippage.
+    // ///
+    // pub fn swap_router_base_in<'a, 'b, 'c: 'info, 'info>(
+    //     ctx: Context<'a, 'b, 'c, 'info, SwapRouterBaseIn<'info>>,
+    //     amount_in: u64,
+    //     amount_out_minimum: u64,
+    // ) -> Result<()> {
+    //     instructions::swap_router_base_in(ctx, amount_in, amount_out_minimum)
+    // }
 }

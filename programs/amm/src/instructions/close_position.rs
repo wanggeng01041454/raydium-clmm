@@ -13,9 +13,9 @@ pub struct ClosePosition<'info> {
 
     /// Mint address bound to the personal position.
     #[account(
-      mut,
-      address = personal_position.nft_mint,
-      mint::token_program = token_program,
+        mut,
+        address = personal_position.nft_mint,
+        mint::token_program = token_program,
     )]
     pub position_nft_mint: Box<InterfaceAccount<'info, Mint>>,
 
