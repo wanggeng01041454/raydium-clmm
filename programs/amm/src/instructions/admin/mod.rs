@@ -1,3 +1,6 @@
+pub mod init_amm_admin_group;
+pub use init_amm_admin_group::*;
+
 pub mod create_amm_config;
 pub use create_amm_config::*;
 

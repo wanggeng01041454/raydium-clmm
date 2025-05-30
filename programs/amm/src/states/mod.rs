@@ -1,3 +1,4 @@
+pub mod admin_group;
 pub mod config;
 pub mod operation_account;
 pub mod oracle;
@@ -8,6 +9,7 @@ pub mod support_mint_associated;
 pub mod tick_array;
 pub mod tickarray_bitmap_extension;
 
+pub use admin_group::*;
 pub use config::*;
 pub use operation_account::*;
 pub use oracle::*;

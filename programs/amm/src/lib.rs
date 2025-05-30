@@ -38,6 +38,14 @@ pub mod amm_v3 {
 
     use super::*;
 
+    /// Initialize the AMM admin group account, which is used to manage the AMM protocol.
+    pub fn init_amm_admin_group(
+        ctx: Context<InitAdminGroupAccounts>,
+        params: InitAdminGroupParams,
+    ) -> Result<()> {
+        instructions::init_amm_admin_group(ctx, params)
+    }
+
     // The configuration of AMM protocol, include trade fee and protocol fee
     /// # Arguments
     ///
