@@ -6,12 +6,21 @@ use std::ops::DerefMut;
 #[derive(Accounts)]
 #[instruction(index: u16)]
 pub struct CreateAmmConfig<'info> {
-    /// Address to be set as protocol owner.
+    /// Address to be set as normal manager in admin group.
     #[account(
         mut,
-        address = crate::admin::ID @ ErrorCode::NotApproved
+        address = admin_group.normal_manager @ ErrorCode::NotApproved
     )]
     pub owner: Signer<'info>,
+
+    /// amm admin group account to store admin permissions.
+    #[account(
+        seeds = [
+            ADMIN_GROUP_SEED.as_bytes()
+        ],
+        bump,
+    )]
+    pub admin_group: Box<Account<'info, AmmAdminGroup>>,
 
     /// Initialize config state account to store protocol owner address and fee rates.
     #[account(

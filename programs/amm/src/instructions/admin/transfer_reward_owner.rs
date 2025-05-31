@@ -5,9 +5,18 @@ use anchor_lang::prelude::*;
 pub struct TransferRewardOwner<'info> {
     /// Address to be set as operation account owner.
     #[account(
-        address = crate::admin::ID @ ErrorCode::NotApproved
+        address = admin_group.reward_config_manager @ ErrorCode::NotApproved
     )]
     pub authority: Signer<'info>,
+
+    /// amm admin group account to store admin permissions.
+    #[account(
+        seeds = [
+            ADMIN_GROUP_SEED.as_bytes()
+        ],
+        bump,
+    )]
+    pub admin_group: Box<Account<'info, AmmAdminGroup>>,
 
     #[account(mut)]
     pub pool_state: AccountLoader<'info, PoolState>,

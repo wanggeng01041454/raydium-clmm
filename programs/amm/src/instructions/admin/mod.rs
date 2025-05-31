@@ -1,8 +1,14 @@
 pub mod init_amm_admin_group;
 pub use init_amm_admin_group::*;
 
+pub mod update_amm_admin_group;
+pub use update_amm_admin_group::*;
+
 pub mod create_amm_config;
 pub use create_amm_config::*;
+
+pub mod deposit_offchain_reward;
+pub use deposit_offchain_reward::*;
 
 pub mod update_amm_config;
 pub use update_amm_config::*;

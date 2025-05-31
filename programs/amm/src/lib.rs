@@ -46,6 +46,14 @@ pub mod amm_v3 {
         instructions::init_amm_admin_group(ctx, params)
     }
 
+    /// Update the AMM admin group account, which is used to manage the AMM protocol.
+    pub fn update_amm_admin_group(
+        ctx: Context<UpdateAdminGroupAccounts>,
+        params: UpdateAdminGroupParams,
+    ) -> Result<()> {
+        instructions::update_amm_admin_group(ctx, params)
+    }
+
     // The configuration of AMM protocol, include trade fee and protocol fee
     /// # Arguments
     ///
@@ -238,6 +246,28 @@ pub mod amm_v3 {
             end_time,
         )
     }
+
+    /// deposit offchain reward into the pool
+    pub fn deposit_offchain_reward(
+        ctx: Context<DepositOffchainRewardAccounts>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::deposit_offchain_reward(ctx, amount)
+    }
+
+    // pub fn claim_offchain_reward(
+    //     ctx: Context<ClaimOffchainReward>,
+    //     amount: u64,
+    // ) -> Result<()> {
+    //     instructions::claim_offchain_reward(ctx, amount)
+    // }
+
+    // pub fn withdraw_offchain_reward(
+    //     ctx: Context<WithdrawOffchainReward>,
+    //     amount: u64,
+    // ) -> Result<()> {
+    //     instructions::withdraw_offchain_reward(ctx, amount)
+    // }
 
     /// Collect the protocol fee accrued to the pool
     ///

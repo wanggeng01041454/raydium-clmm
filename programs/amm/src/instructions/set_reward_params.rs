@@ -12,6 +12,15 @@ pub struct SetRewardParams<'info> {
     /// Address to be set as protocol owner. It pays to create factory state account.
     pub authority: Signer<'info>,
 
+    /// amm admin group account to store admin permissions.
+    #[account(
+        seeds = [
+            ADMIN_GROUP_SEED.as_bytes()
+        ],
+        bump,
+    )]
+    pub admin_group: Box<Account<'info, AmmAdminGroup>>,
+
     #[account(
         address = pool_state.load()?.amm_config
     )]
@@ -49,7 +58,10 @@ pub fn set_reward_params<'a, 'b, 'c: 'info, 'info>(
     require_gt!(end_time, open_time);
     require_gt!(emissions_per_second_x64, 0);
     let operation_state = ctx.accounts.operation_state.load()?;
-    let admin_keys = operation_state.operation_owners.to_vec();
+
+    let mut admin_keys = operation_state.operation_owners.to_vec();
+    admin_keys.push(ctx.accounts.admin_group.reward_config_manager);
+
     let admin_operator = admin_keys.contains(&ctx.accounts.authority.key())
         && ctx.accounts.authority.key() != Pubkey::default();
 

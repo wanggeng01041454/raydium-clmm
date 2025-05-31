@@ -32,11 +32,14 @@ pub struct InitAdminGroupAccounts<'info> {
 pub struct InitAdminGroupParams {
     /// the address who can hold the fee,
     /// anyone can trigger the fee collection action,
-    pub fee_manager: Pubkey,
+    pub fee_keeper: Pubkey,
 
-    /// the address who can manage the reward
-    /// set reward, set the account who can set the reward, claim the remaining reward
-    pub reward_manager: Pubkey,
+    /// the address who can config the reward(config, deposit, withdraw),
+    /// deposit reward, set the account who can deposit the reward, withdraw the remaining reward(withdraw)
+    pub reward_config_manager: Pubkey,
+
+    /// the address who can manage the offchain reward claim
+    pub reward_claim_manager: Pubkey,
 
     /// the address who can manage the pool create action,
     /// without this account's permission, no one can create a pool
@@ -57,15 +60,19 @@ pub fn init_amm_admin_group(
 ) -> Result<()> {
     let admin_group = ctx.accounts.admin_group.deref_mut();
 
-    admin_group.fee_manager = params.fee_manager;
-    admin_group.reward_manager = params.reward_manager;
+    admin_group.fee_keeper = params.fee_keeper;
+    admin_group.reward_config_manager = params.reward_config_manager;
+    admin_group.reward_claim_manager = params.reward_claim_manager;
     admin_group.pool_manager = params.pool_manager;
     admin_group.emergency_manager = params.emergency_manager;
     admin_group.normal_manager = params.normal_manager;
 
+    admin_group.validate()?;
+
     emit!(ModifyAmmAdminGroupEvent {
-        fee_manager: admin_group.fee_manager,
-        reward_manager: admin_group.reward_manager,
+        fee_keeper: admin_group.fee_keeper,
+        reward_config_manager: admin_group.reward_config_manager,
+        reward_claim_manager: admin_group.reward_claim_manager,
         pool_manager: admin_group.pool_manager,
         emergency_manager: admin_group.emergency_manager,
         normal_manager: admin_group.normal_manager,

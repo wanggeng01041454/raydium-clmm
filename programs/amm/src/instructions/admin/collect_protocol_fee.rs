@@ -1,5 +1,4 @@
 use crate::decrease_liquidity::check_unclaimed_fees_and_vault;
-use crate::error::ErrorCode;
 use crate::states::*;
 use crate::util::*;
 use anchor_lang::prelude::*;
@@ -8,19 +7,19 @@ use anchor_spl::token_interface::{Mint, Token2022, TokenAccount};
 
 #[derive(Accounts)]
 pub struct CollectProtocolFee<'info> {
-    /// Only admin or config owner can collect fee now
-    #[account(constraint = (owner.key() == amm_config.owner || owner.key() == crate::admin::ID) @ ErrorCode::NotApproved)]
-    pub owner: Signer<'info>,
+    /// amm admin group account to store admin permissions.
+    /// anyone can collect fee, but only fee-manager in admin group can receive fee
+    #[account(
+        seeds = [
+            ADMIN_GROUP_SEED.as_bytes()
+        ],
+        bump,
+    )]
+    pub admin_group: Box<Account<'info, AmmAdminGroup>>,
 
     /// Pool state stores accumulated protocol fee amount
     #[account(mut)]
     pub pool_state: AccountLoader<'info, PoolState>,
-
-    /// Amm config account stores owner
-    #[account(
-        address = pool_state.load()?.amm_config
-    )]
-    pub amm_config: Account<'info, AmmConfig>,
 
     /// The address that holds pool tokens for token_0
     #[account(
@@ -49,11 +48,19 @@ pub struct CollectProtocolFee<'info> {
     pub vault_1_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// The address that receives the collected token_0 protocol fees
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = vault_0_mint,
+        token::authority = admin_group.fee_keeper,
+    )]
     pub recipient_token_account_0: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The address that receives the collected token_1 protocol fees
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = vault_1_mint,
+        token::authority = admin_group.fee_keeper,
+    )]
     pub recipient_token_account_1: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The SPL program to perform token transfers

@@ -13,7 +13,7 @@ pub struct UpdateAdminGroupAccounts<'info> {
     )]
     pub payer: Signer<'info>,
 
-    /// Initialize amm admin group account to store admin permissions.
+    /// update amm admin group account to store admin permissions.
     #[account(
         mut,
         seeds = [
@@ -26,12 +26,16 @@ pub struct UpdateAdminGroupAccounts<'info> {
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize, Debug)]
 pub struct UpdateAdminGroupParams {
-    /// the address who can claim the fee
-    pub fee_manager: Option<Pubkey>,
+    /// the address who can hold the fee,
+    /// anyone can trigger the fee collection action,
+    pub fee_keeper: Option<Pubkey>,
 
-    /// the address who can manage the reward
-    /// set reward, set the account who can set the reward, claim the remaining reward
-    pub reward_manager: Option<Pubkey>,
+    /// the address who can config the reward(config, deposit, withdraw),
+    /// deposit reward, set the account who can deposit the reward, withdraw the remaining reward(withdraw)
+    pub reward_config_manager: Option<Pubkey>,
+
+    /// the address who can manage the offchain reward claim
+    pub reward_claim_manager: Option<Pubkey>,
 
     /// the address who can manage the pool create action,
     /// without this account's permission, no one can create a pool
@@ -47,16 +51,19 @@ pub struct UpdateAdminGroupParams {
 }
 
 pub fn update_amm_admin_group(
-    ctx: Context<InitAdminGroupAccounts>,
-    params: InitAdminGroupParams,
+    ctx: Context<UpdateAdminGroupAccounts>,
+    params: UpdateAdminGroupParams,
 ) -> Result<()> {
     let admin_group = ctx.accounts.admin_group.deref_mut();
 
-    if let Some(fee_manager) = params.fee_manager {
-        admin_group.fee_manager = fee_manager;
+    if let Some(fee_keeper) = params.fee_keeper {
+        admin_group.fee_keeper = fee_keeper;
     }
-    if let Some(reward_manager) = params.reward_manager {
-        admin_group.reward_manager = reward_manager;
+    if let Some(reward_manager) = params.reward_config_manager {
+        admin_group.reward_config_manager = reward_manager;
+    }
+    if let Some(reward_claim_manager) = params.reward_claim_manager {
+        admin_group.reward_claim_manager = reward_claim_manager;
     }
     if let Some(pool_manager) = params.pool_manager {
         admin_group.pool_manager = pool_manager;
@@ -68,9 +75,12 @@ pub fn update_amm_admin_group(
         admin_group.normal_manager = normal_manager;
     }
 
+    admin_group.validate()?;
+
     emit!(ModifyAmmAdminGroupEvent {
-        fee_manager: admin_group.fee_manager,
-        reward_manager: admin_group.reward_manager,
+        fee_keeper: admin_group.fee_keeper,
+        reward_config_manager: admin_group.reward_config_manager,
+        reward_claim_manager: admin_group.reward_claim_manager,
         pool_manager: admin_group.pool_manager,
         emergency_manager: admin_group.emergency_manager,
         normal_manager: admin_group.normal_manager,

@@ -5,8 +5,17 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 pub struct UpdateAmmConfig<'info> {
     /// The amm config owner or admin
-    #[account(address = crate::admin::ID @ ErrorCode::NotApproved)]
+    #[account(address = admin_group.normal_manager @ ErrorCode::NotApproved)]
     pub owner: Signer<'info>,
+
+    /// amm admin group account to store admin permissions.
+    #[account(
+        seeds = [
+            ADMIN_GROUP_SEED.as_bytes()
+        ],
+        bump,
+    )]
+    pub admin_group: Box<Account<'info, AmmAdminGroup>>,
 
     /// Amm config account to be changed
     #[account(mut)]

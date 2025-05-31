@@ -15,6 +15,16 @@ pub const COLLECT_REMAINING_MEMO_MSG: &'static [u8] = b"raydium_collect_remainin
 pub struct CollectRemainingRewards<'info> {
     /// The founder who init reward info previously
     pub reward_funder: Signer<'info>,
+
+    /// amm admin group account to store admin permissions.
+    #[account(
+        seeds = [
+            ADMIN_GROUP_SEED.as_bytes()
+        ],
+        bump,
+    )]
+    pub admin_group: Box<Account<'info, AmmAdminGroup>>,
+
     /// The funder's reward token account
     #[account(mut)]
     pub funder_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -45,10 +55,17 @@ pub fn collect_remaining_rewards(
     //     COLLECT_REMAINING_MEMO_MSG,
     //     ctx.accounts.memo_program.to_account_info(),
     // )?;
+
+    // only pool owner or reward-manager can collect remaining rewards
+    if ctx.accounts.reward_funder.key() != ctx.accounts.pool_state.load()?.owner
+        && ctx.accounts.admin_group.reward_config_manager != ctx.accounts.reward_funder.key()
+    {
+        return err!(ErrorCode::NotApproved);
+    }
+
     let amount_remaining = get_remaining_reward_amount(
         &ctx.accounts.pool_state,
         &ctx.accounts.reward_token_vault,
-        &ctx.accounts.reward_funder.key(),
         reward_index,
     )?;
 
@@ -68,7 +85,6 @@ pub fn collect_remaining_rewards(
 fn get_remaining_reward_amount(
     pool_state_loader: &AccountLoader<PoolState>,
     reward_token_vault: &InterfaceAccount<TokenAccount>,
-    reward_funder: &Pubkey,
     reward_index: u8,
 ) -> Result<u64> {
     let current_timestamp = u64::try_from(Clock::get()?.unix_timestamp).unwrap();
@@ -84,7 +100,6 @@ fn get_remaining_reward_amount(
         reward_info.end_time,
         ErrorCode::NotApproved
     );
-    require_keys_eq!(reward_funder.key(), pool_state.owner);
     require_keys_eq!(reward_token_vault.key(), reward_info.token_vault);
 
     let amount_remaining = reward_token_vault

@@ -1,5 +1,6 @@
 pub mod admin_group;
 pub mod config;
+pub mod offchain_reward_config;
 pub mod operation_account;
 pub mod oracle;
 pub mod personal_position;
@@ -11,6 +12,7 @@ pub mod tickarray_bitmap_extension;
 
 pub use admin_group::*;
 pub use config::*;
+pub use offchain_reward_config::*;
 pub use operation_account::*;
 pub use oracle::*;
 pub use personal_position::*;

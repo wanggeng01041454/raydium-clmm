@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use crate::error::ErrorCode;
 use crate::states::*;
 use crate::{libraries::tick_math, util};
@@ -9,6 +11,19 @@ pub struct CreatePool<'info> {
     /// Address paying to create the pool. Can be anyone
     #[account(mut)]
     pub pool_creator: Signer<'info>,
+
+    /// with pool_manager permission, the pool creator can create a pool.
+    #[account(address = admin_group.pool_manager @ ErrorCode::NotApproved,)]
+    pub pool_manager: Signer<'info>,
+
+    /// amm admin group account to store admin permissions.
+    #[account(
+        seeds = [
+            ADMIN_GROUP_SEED.as_bytes()
+        ],
+        bump,
+    )]
+    pub admin_group: Box<Account<'info, AmmAdminGroup>>,
 
     /// Which config the pool belongs to.
     pub amm_config: Box<Account<'info, AmmConfig>>,
@@ -27,6 +42,19 @@ pub struct CreatePool<'info> {
         space = PoolState::LEN
     )]
     pub pool_state: AccountLoader<'info, PoolState>,
+
+    /// Initialize an account to store the off-chain reward config
+    #[account(
+        init,
+        seeds = [
+            OFFCHAIN_REWARD_SEED.as_bytes(),
+            pool_state.key().as_ref(),
+        ],
+        bump,
+        payer = pool_creator,
+        space = OffchainRewardConfig::need_len(0)
+    )]
+    pub offchain_reward_config: Box<Account<'info, OffchainRewardConfig>>,
 
     /// Token_0 mint, the key must be smaller then token_1 mint.
     #[account(
@@ -143,12 +171,22 @@ pub fn create_pool(ctx: Context<CreatePool>, sqrt_price_x64: u128, open_time: u6
     {
         return err!(ErrorCode::NotSupportMint);
     }
-    
+
     // we can set open-time as a future time
     // let block_timestamp = solana_program::clock::Clock::get()?.unix_timestamp as u64;
     // require_gt!(block_timestamp, open_time);
 
     let pool_id = ctx.accounts.pool_state.key();
+
+    // init offchain reward config
+    {
+        let reward_vault = ctx.accounts.offchain_reward_config.key();
+        let vault_bump = ctx.bumps.offchain_reward_config;
+        let offchain_reward_config = ctx.accounts.offchain_reward_config.deref_mut();
+
+        offchain_reward_config.initialize(pool_id, reward_vault, vault_bump)?;
+    }
+
     let mut pool_state = ctx.accounts.pool_state.load_init()?;
 
     let tick = tick_math::get_tick_at_sqrt_price(sqrt_price_x64)?;
@@ -168,7 +206,7 @@ pub fn create_pool(ctx: Context<CreatePool>, sqrt_price_x64: u128, open_time: u6
     pool_state.initialize(
         bump,
         sqrt_price_x64,
-        0,
+        open_time,
         tick,
         ctx.accounts.pool_creator.key(),
         ctx.accounts.token_vault_0.key(),

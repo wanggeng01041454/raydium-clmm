@@ -571,6 +571,7 @@ pub fn exact_internal<'b, 'c: 'info, 'info>(
         let pool_state = &mut ctx.pool_state.load_mut()?;
         zero_for_one = ctx.input_vault.mint == pool_state.token_mint_0;
 
+        // wait for the pool to be open
         require_gt!(block_timestamp, pool_state.open_time);
 
         require!(

@@ -9,9 +9,19 @@ pub struct CreateSupportMintAssociated<'info> {
     /// Address to be set as protocol owner.
     #[account(
         mut,
-        address = crate::admin::ID @ ErrorCode::NotApproved
+        address = admin_group.normal_manager @ ErrorCode::NotApproved
     )]
     pub owner: Signer<'info>,
+
+    /// amm admin group account to store admin permissions.
+    #[account(
+        seeds = [
+            ADMIN_GROUP_SEED.as_bytes()
+        ],
+        bump,
+    )]
+    pub admin_group: Box<Account<'info, AmmAdminGroup>>,
+
     /// Support token mint
     #[account(
         owner = token_2022::ID @ ErrorCode::NotApproved
