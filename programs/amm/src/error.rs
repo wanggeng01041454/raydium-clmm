@@ -107,4 +107,9 @@ pub enum ErrorCode {
     CalculateOverflow,
     #[msg("TransferFee calculate not match")]
     TransferFeeCalculateNotMatch,
+
+    #[msg("invalid account owner")]
+    IllegalAccountOwner,
+    #[msg("Invalid account")]
+    InvalidAccount,
 }

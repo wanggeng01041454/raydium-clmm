@@ -255,12 +255,13 @@ pub mod amm_v3 {
         instructions::deposit_offchain_reward(ctx, amount)
     }
 
-    // pub fn claim_offchain_reward(
-    //     ctx: Context<ClaimOffchainReward>,
-    //     amount: u64,
-    // ) -> Result<()> {
-    //     instructions::claim_offchain_reward(ctx, amount)
-    // }
+    /// claim offchain reward from the pool
+    pub fn claim_offchain_reward(
+        ctx: Context<ClaimOffchainRewardAccounts>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::claim_offchain_reward(ctx, amount)
+    }
 
     // pub fn withdraw_offchain_reward(
     //     ctx: Context<WithdrawOffchainReward>,

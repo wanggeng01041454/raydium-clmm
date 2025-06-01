@@ -10,6 +10,9 @@ pub use create_amm_config::*;
 pub mod deposit_offchain_reward;
 pub use deposit_offchain_reward::*;
 
+pub mod claim_offchain_reward;
+pub use claim_offchain_reward::*;
+
 pub mod update_amm_config;
 pub use update_amm_config::*;
 

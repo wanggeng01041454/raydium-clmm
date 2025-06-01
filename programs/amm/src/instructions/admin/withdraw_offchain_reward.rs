@@ -2,14 +2,11 @@ use crate::error::ErrorCode;
 use crate::states::*;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface};
+use std::ops::Deref;
 
 #[derive(Accounts)]
-pub struct DepositOffchainRewardAccounts<'info> {
-    /// the address paying to deposit the offchain reward.
-    #[account(mut)]
-    pub payer: Signer<'info>,
-
-    /// The authority make decision that who can deposit the offchain reward.
+pub struct WithdrawOffchainRewardAccounts<'info> {
+    /// The authority make decision that who can withdraw the offchain reward.
     #[account(
         address = admin_group.reward_config_manager @ ErrorCode::NotApproved
     )]
@@ -29,42 +26,43 @@ pub struct DepositOffchainRewardAccounts<'info> {
     )]
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    ///
+    /// the address who receive the withdrawn offchain reward.
+    #[account(
+        mut,
+        token::mint = token_mint,
+        token::token_program = token_program,
+    )]
+    pub receiver_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
     #[account(
         mut,
         associated_token::mint = token_mint,
-        associated_token::authority = payer,
-        associated_token::token_program = token_program,
-    )]
-    pub payer_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    #[account(
-        init_if_needed,
-        associated_token::mint = token_mint,
         associated_token::authority = reward_config,
         associated_token::token_program = token_program,
-        payer = payer,
     )]
     pub reward_vault_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The offchain reward config account, it also is the reward vault account.
-    #[account(mut)]
-    pub reward_config: Account<'info, OffchainRewardConfig>,
+    pub reward_config: Box<Account<'info, OffchainRewardConfig>>,
 
     /// Spl token program or token program 2022
     pub token_program: Interface<'info, TokenInterface>,
 
     pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
-
-    pub system_program: Program<'info, System>,
 }
 
-/// Deposit offchain reward into the reward vault.
-pub fn deposit_offchain_reward(
-    ctx: Context<DepositOffchainRewardAccounts>,
+/// withdraw offchain reward into the reward vault.
+pub fn withdraw_offchain_reward(
+    ctx: Context<WithdrawOffchainRewardAccounts>,
     amount: u64,
 ) -> Result<()> {
-    let reward_config = &mut ctx.accounts.reward_config;
+    require_keys_eq!(
+        *ctx.accounts.reward_config.to_account_info().owner,
+        crate::id(),
+        ErrorCode::IllegalAccountOwner
+    );
+
+    let reward_config = ctx.accounts.reward_config.deref();
 
     require_keys_eq!(
         reward_config.reward_vault,
@@ -72,28 +70,38 @@ pub fn deposit_offchain_reward(
         ErrorCode::InvalidAccount
     );
 
-    // add reward mint to the config if not exists, before that, check if the config account has enough space
-    if reward_config.add_reward_mint(ctx.accounts.token_mint.key())? {
-        // reallocate the account if needed
-        OffchainRewardConfig::realloc_if_needed(
-            reward_config.to_account_info(),
-            reward_config.reward_mint_vec.len(),
-            ctx.accounts.payer.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-        )?;
+    if reward_config
+        .reward_mint_vec
+        .contains(&ctx.accounts.token_mint.key())
+    {
+        return err!(ErrorCode::NotSupportMint);
     }
 
-    // transfer the token to the reward vault
+    // make sure amount is enough
+    let amount = if amount > ctx.accounts.reward_vault_account.amount {
+        ctx.accounts.reward_vault_account.amount
+    } else {
+        amount
+    };
+    require_gt!(amount, 0);
+
+    // transfer the token to the claimer's token account
     let decimals = ctx.accounts.token_mint.decimals;
+    let seeds = reward_config.seeds();
 
     let cpi_accounts = token_interface::TransferChecked {
-        from: ctx.accounts.payer_token_account.to_account_info(),
-        to: ctx.accounts.reward_vault_account.to_account_info(),
+        to: ctx.accounts.receiver_token_account.to_account_info(),
+        from: ctx.accounts.reward_vault_account.to_account_info(),
         mint: ctx.accounts.token_mint.to_account_info(),
-        authority: ctx.accounts.payer.to_account_info(),
+        authority: ctx.accounts.reward_config.to_account_info(),
     };
+
     token_interface::transfer_checked(
-        CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts),
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            cpi_accounts,
+            &[&seeds],
+        ),
         amount,
         decimals,
     )?;
