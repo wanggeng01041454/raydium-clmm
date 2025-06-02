@@ -29,6 +29,9 @@ pub struct AmmAdminGroup {
     /// normal action manager,
     /// such as create amm config, update amm config
     pub normal_manager: Pubkey,
+
+    /// The space required for the account. may be used for future extensions.
+    pub pad: [Pubkey; 6],
 }
 
 impl AmmAdminGroup {
@@ -38,6 +41,10 @@ impl AmmAdminGroup {
         require!(self.fee_keeper != Pubkey::default(), ErrorCode::NotApproved);
         require!(
             self.reward_config_manager != Pubkey::default(),
+            ErrorCode::NotApproved
+        );
+        require!(
+            self.reward_claim_manager != Pubkey::default(),
             ErrorCode::NotApproved
         );
         require!(

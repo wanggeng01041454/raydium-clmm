@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use crate::error::ErrorCode;
 use crate::states::*;
 use anchor_lang::prelude::*;
@@ -49,7 +51,7 @@ pub struct DepositOffchainRewardAccounts<'info> {
 
     /// The offchain reward config account, it also is the reward vault account.
     #[account(mut)]
-    pub reward_config: Account<'info, OffchainRewardConfig>,
+    pub reward_config: Box<Account<'info, OffchainRewardConfig>>,
 
     /// Spl token program or token program 2022
     pub token_program: Interface<'info, TokenInterface>,
@@ -64,7 +66,8 @@ pub fn deposit_offchain_reward(
     ctx: Context<DepositOffchainRewardAccounts>,
     amount: u64,
 ) -> Result<()> {
-    let reward_config = &mut ctx.accounts.reward_config;
+    let reward_account_info = ctx.accounts.reward_vault_account.to_account_info();
+    let reward_config = ctx.accounts.reward_config.deref_mut();
 
     require_keys_eq!(
         reward_config.reward_vault,
@@ -90,7 +93,7 @@ pub fn deposit_offchain_reward(
         from: ctx.accounts.payer_token_account.to_account_info(),
         to: ctx.accounts.reward_vault_account.to_account_info(),
         mint: ctx.accounts.token_mint.to_account_info(),
-        authority: ctx.accounts.payer.to_account_info(),
+        authority: reward_account_info,
     };
     token_interface::transfer_checked(
         CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts),

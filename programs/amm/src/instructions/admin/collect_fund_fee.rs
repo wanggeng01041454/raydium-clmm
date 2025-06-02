@@ -74,6 +74,9 @@ pub fn collect_fund_fee(
     amount_0_requested: u64,
     amount_1_requested: u64,
 ) -> Result<()> {
+    // check if the admin group is valid
+    ctx.accounts.admin_group.validate()?;
+
     let amount_0: u64;
     let amount_1: u64;
     {

@@ -2,7 +2,7 @@ use crate::error::ErrorCode;
 use crate::states::*;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface};
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 #[derive(Accounts)]
 pub struct WithdrawOffchainRewardAccounts<'info> {
@@ -43,6 +43,7 @@ pub struct WithdrawOffchainRewardAccounts<'info> {
     pub reward_vault_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The offchain reward config account, it also is the reward vault account.
+    #[account(mut)]
     pub reward_config: Box<Account<'info, OffchainRewardConfig>>,
 
     /// Spl token program or token program 2022
@@ -62,7 +63,8 @@ pub fn withdraw_offchain_reward(
         ErrorCode::IllegalAccountOwner
     );
 
-    let reward_config = ctx.accounts.reward_config.deref();
+    let reward_account_info = ctx.accounts.reward_vault_account.to_account_info();
+    let reward_config = ctx.accounts.reward_config.deref_mut();
 
     require_keys_eq!(
         reward_config.reward_vault,
@@ -70,7 +72,7 @@ pub fn withdraw_offchain_reward(
         ErrorCode::InvalidAccount
     );
 
-    if reward_config
+    if !reward_config
         .reward_mint_vec
         .contains(&ctx.accounts.token_mint.key())
     {
@@ -79,6 +81,9 @@ pub fn withdraw_offchain_reward(
 
     // make sure amount is enough
     let amount = if amount > ctx.accounts.reward_vault_account.amount {
+        // if we withdraw all the remaining amount, we also remove the mint from the config
+        reward_config.remove_reward_mint(ctx.accounts.token_mint.key())?;
+        // if the amount is larger than the vault, we withdraw all the remaining amount
         ctx.accounts.reward_vault_account.amount
     } else {
         amount
@@ -93,7 +98,7 @@ pub fn withdraw_offchain_reward(
         to: ctx.accounts.receiver_token_account.to_account_info(),
         from: ctx.accounts.reward_vault_account.to_account_info(),
         mint: ctx.accounts.token_mint.to_account_info(),
-        authority: ctx.accounts.reward_config.to_account_info(),
+        authority: reward_account_info,
     };
 
     token_interface::transfer_checked(
