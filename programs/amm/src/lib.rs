@@ -263,12 +263,13 @@ pub mod amm_v3 {
         instructions::claim_offchain_reward(ctx, amount)
     }
 
-    // pub fn withdraw_offchain_reward(
-    //     ctx: Context<WithdrawOffchainReward>,
-    //     amount: u64,
-    // ) -> Result<()> {
-    //     instructions::withdraw_offchain_reward(ctx, amount)
-    // }
+    /// withdraw offchain reward from the pool
+    pub fn withdraw_offchain_reward(
+        ctx: Context<WithdrawOffchainRewardAccounts>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::withdraw_offchain_reward(ctx, amount)
+    }
 
     /// Collect the protocol fee accrued to the pool
     ///
