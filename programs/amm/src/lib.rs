@@ -11,13 +11,13 @@ use states::*;
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_security_txt::security_txt! {
-    name: "raydium-clmm",
-    project_url: "https://raydium.io",
-    contacts: "link:https://immunefi.com/bounty/raydium",
-    policy: "https://immunefi.com/bounty/raydium",
-    source_code: "https://github.com/raydium-io/raydium-clmm",
+    name: "byreal-clmm",
+    project_url: "",
+    contacts: "",
+    policy: "",
+    source_code: "https://github.com/byreal-git/byreal-clmm",
     preferred_languages: "en",
-    auditors: "https://github.com/raydium-io/raydium-docs/blob/master/audit/OtterSec%20Q3%202022/Raydium%20concentrated%20liquidity%20(CLMM)%20program.pdf"
+    auditors: ""
 }
 
 #[cfg(feature = "devnet")]
@@ -34,7 +34,7 @@ pub mod admin {
 }
 
 #[program]
-pub mod amm_v3 {
+pub mod byreal_clmm {
 
     use super::*;
 

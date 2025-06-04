@@ -817,10 +817,10 @@ fn mint_nft_and_remove_mint_authority<'info>(
 
 fn get_metadata_data(personal_position_id: Pubkey) -> (String, String, String) {
     return (
-        String::from("Raydium Concentrated Liquidity"),
+        String::from("Byreal Concentrated Liquidity"),
         String::from("RCL"),
         format!(
-            "https://dynamic-ipfs.raydium.io/clmm/position?id={}",
+            "https://dynamic-ipfs.byreal.io/clmm/position?id={}",
             personal_position_id.to_string()
         ),
     );
