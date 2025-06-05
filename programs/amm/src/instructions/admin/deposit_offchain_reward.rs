@@ -93,7 +93,7 @@ pub fn deposit_offchain_reward(
         from: ctx.accounts.payer_token_account.to_account_info(),
         to: ctx.accounts.reward_vault_token_account.to_account_info(),
         mint: ctx.accounts.token_mint.to_account_info(),
-        authority: reward_account_info,
+        authority: ctx.accounts.payer.to_account_info(),
     };
     token_interface::transfer_checked(
         CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts),

@@ -63,7 +63,7 @@ pub fn withdraw_offchain_reward(
         ErrorCode::IllegalAccountOwner
     );
 
-    let reward_account_info = ctx.accounts.reward_vault_token_account.to_account_info();
+    let reward_config_account_info = ctx.accounts.reward_config.to_account_info();
     let reward_config = ctx.accounts.reward_config.deref_mut();
 
     require_keys_eq!(
@@ -98,7 +98,7 @@ pub fn withdraw_offchain_reward(
         to: ctx.accounts.receiver_token_account.to_account_info(),
         from: ctx.accounts.reward_vault_token_account.to_account_info(),
         mint: ctx.accounts.token_mint.to_account_info(),
-        authority: reward_account_info,
+        authority: reward_config_account_info,
     };
 
     token_interface::transfer_checked(
