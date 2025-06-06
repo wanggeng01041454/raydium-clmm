@@ -25,6 +25,10 @@ pub struct ClaimOffchainRewardAccounts<'info> {
     )]
     pub admin_group: Account<'info, AmmAdminGroup>,
 
+    /// the pool id, which is the pool state account.
+    /// CHECK: only used to derive the reward config account.
+    pub pool_id: UncheckedAccount<'info>,
+
     #[account(
         mint::token_program = token_program
     )]
@@ -48,6 +52,14 @@ pub struct ClaimOffchainRewardAccounts<'info> {
     pub reward_vault_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The offchain reward config account, it also is the reward vault account.
+    #[account(
+        seeds = [
+            OFFCHAIN_REWARD_SEED.as_bytes(),
+            pool_id.key().as_ref(),
+        ],
+        bump,
+        has_one = pool_id
+    )]
     pub reward_config: Box<Account<'info, OffchainRewardConfig>>,
 
     /// Spl token program or token program 2022
