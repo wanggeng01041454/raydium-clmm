@@ -6,6 +6,7 @@ import { PublicKey, TransactionInstruction, Connection } from "@solana/web3.js";
 import BN from "bn.js";
 import { connection } from "../config";
 
+// import ByrealClmmIDL from "../../target/idl/byreal_clmm_mainnet.json";
 import ByrealClmmIDL from "../../target/idl/byreal_clmm.json";
 import { ByrealClmm } from "../../target/types/byreal_clmm";
 
