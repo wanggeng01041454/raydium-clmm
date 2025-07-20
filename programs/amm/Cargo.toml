@@ -12,6 +12,7 @@ doctest = false
 
 [features]
 no-entrypoint = []
+no-idl = []
 cpi = ["no-entrypoint"]
 default = []
 client = []
