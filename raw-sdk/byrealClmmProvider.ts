@@ -24,7 +24,7 @@ import { ByrealClmm } from "../target/types/byreal_clmm";
 import ClmmIDL from "../target/idl/byreal_clmm.json";
 import { getAssociatedTokenAddress, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
-import { CreateAmmConfigParams, CreatePoolParams, InitAdminGroupParams, ProgramAmmAdminGroupAccountData, ProgramAmmConfigAccountData, ProgramInitAdminGroupParams } from "./byrealClmmTypes";
+import { CreateAmmConfigParams, CreatePoolParams, CreateSupportMintAssociatedParams, InitAdminGroupParams, ProgramAmmAdminGroupAccountData, ProgramAmmConfigAccountData, ProgramInitAdminGroupParams, ProgramSupportMintAssociatedAccountData } from "./byrealClmmTypes";
 import Decimal from "decimal.js";
 
 
@@ -82,6 +82,13 @@ export class ByrealClmmProvider {
     )[0];
   }
 
+  public findSupportMintAssociatedAccountAddress(tokenMint: PublicKey): PublicKey {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("support_mint"), tokenMint.toBuffer()],
+      this.program.programId
+    )[0];
+  }
+
   public async getAdminGroupAccount(address: PublicKey): Promise<ProgramAmmAdminGroupAccountData> {
     return await this.program.account.ammAdminGroup.fetch(address);
   }
@@ -90,6 +97,9 @@ export class ByrealClmmProvider {
     return await this.program.account.ammConfig.fetch(address);
   }
 
+  public async getSupportMintAssociatedAccount(address: PublicKey): Promise<ProgramSupportMintAssociatedAccountData> {
+    return await this.program.account.supportMintAssociated.fetch(address);
+  }
 
   public async initAdminGroupAction(params: InitAdminGroupParams): Promise<ActionResult> {
     const args: ProgramInitAdminGroupParams = {
@@ -180,6 +190,47 @@ export class ByrealClmmProvider {
 
     // 转换为 BN
     return new anchor.BN(result.floor().toString());
+  }
+
+  /**
+   * @description 比较两个公钥的字节值, 1>2 返回 1, 1<2 返回 -1, 1=2 返回 0
+   * @param pubkey1 
+   * @param pubkey2 
+   * @returns 
+   */
+  public comparePublicKeys(pubkey1: PublicKey, pubkey2: PublicKey): number {
+    const bytes1 = pubkey1.toBytes();
+    const bytes2 = pubkey2.toBytes();
+
+    for (let i = 0; i < 32; i++) {
+      if (bytes1[i] < bytes2[i]) return -1;
+      if (bytes1[i] > bytes2[i]) return 1;
+    }
+    return 0;
+  }
+
+  public async createSupportMintAssociatedAction(params: CreateSupportMintAssociatedParams): Promise<ActionResult> {
+
+    const ix = await this.program.methods
+      .createSupportMintAssociated()
+      .accounts({
+        owner: params.owner,
+        tokenMint: params.tokenMint,
+      })
+      .instruction();
+
+    const buildParams: BuildActionResultParams = {
+      buildType: params.buildType,
+      cuPrice: params.cuPrice,
+      cuFactor: params.cuFactor,
+
+      connection: this.connection,
+      ixs: [ix],
+      payer: params.owner,
+      signers: [params.ownerKeypair].filter(kp => kp !== undefined) as Keypair[],
+    };
+
+    return await buildActionResult(buildParams);
   }
 
   /**

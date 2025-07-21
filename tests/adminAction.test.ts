@@ -156,6 +156,47 @@ describe.sequential("ByrealClmm admin操作测试", async () => {
     console.log("创建 Pool 结果:", result.toString());
   });
 
+  const navadiaToken2022Mint = new PublicKey("Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh");
+  const myMockXNavidaToken2022Mint = await createMockXStockToken2022({
+    connection,
+    payerKeypair: GlobalPayerKeypair,
+    authority: GlobalPayerKeypair.publicKey,
+    decimals: 6,
+  });
+
+  it("创建 support mint 的 associated token account", async () => {
+    {
+      const result = await clmmProvider.createSupportMintAssociatedAction({
+        owner: adminKeyPair.publicKey,
+        ownerKeypair: adminKeyPair,
+        tokenMint: navadiaToken2022Mint,
+
+        buildType: BuildType.SendAndConfirmTx,
+      });
+      console.log("创建 support mint 的 associated token account 结果:", result.toString());
+
+      const supportMintAssociatedAddress = clmmProvider.findSupportMintAssociatedAccountAddress(navadiaToken2022Mint);
+      const supportMintAssociatedAccountData = await clmmProvider.getSupportMintAssociatedAccount(supportMintAssociatedAddress);
+      expect(supportMintAssociatedAccountData.mint.toBase58()).toBe(navadiaToken2022Mint.toBase58());
+    }
+
+    {
+      const result = await clmmProvider.createSupportMintAssociatedAction({
+        owner: adminKeyPair.publicKey,
+        ownerKeypair: adminKeyPair,
+        tokenMint: myMockXNavidaToken2022Mint,
+
+        buildType: BuildType.SendAndConfirmTx,
+      });
+      console.log("创建 support mint 的 associated token account 结果:", result.toString());
+
+      const supportMintAssociatedAddress = clmmProvider.findSupportMintAssociatedAccountAddress(myMockXNavidaToken2022Mint);
+      const supportMintAssociatedAccountData = await clmmProvider.getSupportMintAssociatedAccount(supportMintAssociatedAddress);
+      expect(supportMintAssociatedAccountData.mint.toBase58()).toBe(myMockXNavidaToken2022Mint.toBase58());
+    }
+
+  });
+
   it("创建 Pool, token 和 xNavida(token2022)", async () => {
 
     let tokenAProgramId = Token.TOKEN_PROGRAM_ID;
@@ -168,18 +209,19 @@ describe.sequential("ByrealClmm admin操作测试", async () => {
     });
 
     let tokenBProgramId = Token.TOKEN_2022_PROGRAM_ID;
-    let mintB = new PublicKey("Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh"); // xStock, navida
+    let mintB = navadiaToken2022Mint; // xStock, navida
 
     // sort mintA 和 mintB
-    if (mintA > mintB) {
+    if (clmmProvider.comparePublicKeys(mintA, mintB) > 0) {
       [mintA, mintB] = [mintB, mintA];
       [tokenAProgramId, tokenBProgramId] = [tokenBProgramId, tokenAProgramId];
     }
 
-    console.log(`=============tokenAProgramId: ${tokenAProgramId.toBase58()}`);
-    console.log(`+++++++++++++tokenBProgramId: ${tokenBProgramId.toBase58()}`);
+    console.log(`=============tokenAProgramId: ${tokenAProgramId.toBase58()}, mintA: ${mintA.toBase58()}`);
+    console.log(`+++++++++++++tokenBProgramId: ${tokenBProgramId.toBase58()}, mintB: ${mintB.toBase58()}`);
 
     const sqrtPriceX64 = clmmProvider.price2SqrtPriceX64(1.0, 6, 6);
+    const supportMintAssociatedAddress = clmmProvider.findSupportMintAssociatedAccountAddress(navadiaToken2022Mint);
 
     const createPoolParams: CreatePoolParams = {
       poolCreator: adminKeyPair.publicKey,
@@ -197,6 +239,8 @@ describe.sequential("ByrealClmm admin操作测试", async () => {
       mintBProgramId: tokenBProgramId,
 
       sqrtPriceX64,
+
+      remainAccounts: [supportMintAssociatedAddress],
 
       buildType: BuildType.SendAndConfirmTx,
     };
@@ -217,23 +261,19 @@ describe.sequential("ByrealClmm admin操作测试", async () => {
     });
 
     let tokenBProgramId = Token.TOKEN_2022_PROGRAM_ID;
-    let mintB = await createMockXStockToken2022({
-      connection,
-      payerKeypair: GlobalPayerKeypair,
-      authority: GlobalPayerKeypair.publicKey,
-      decimals: 6,
-    });
+    let mintB = myMockXNavidaToken2022Mint; // 自建的 xStock, navida
 
     // sort mintA 和 mintB
-    if (mintA > mintB) {
+    if (clmmProvider.comparePublicKeys(mintA, mintB) > 0) {
       [mintA, mintB] = [mintB, mintA];
       [tokenAProgramId, tokenBProgramId] = [tokenBProgramId, tokenAProgramId];
     }
 
-    console.log(`=============tokenAProgramId: ${tokenAProgramId.toBase58()}`);
-    console.log(`+++++++++++++tokenBProgramId: ${tokenBProgramId.toBase58()}`);
+    console.log(`=============tokenAProgramId: ${tokenAProgramId.toBase58()}, mintA: ${mintA.toBase58()}`);
+    console.log(`+++++++++++++tokenBProgramId: ${tokenBProgramId.toBase58()}, mintB: ${mintB.toBase58()}`);
 
     const sqrtPriceX64 = clmmProvider.price2SqrtPriceX64(1.0, 6, 6);
+    const supportMintAssociatedAddress = clmmProvider.findSupportMintAssociatedAccountAddress(myMockXNavidaToken2022Mint);
 
     const createPoolParams: CreatePoolParams = {
       poolCreator: adminKeyPair.publicKey,
@@ -251,6 +291,8 @@ describe.sequential("ByrealClmm admin操作测试", async () => {
       mintBProgramId: tokenBProgramId,
 
       sqrtPriceX64,
+
+      remainAccounts: [supportMintAssociatedAddress],
 
       buildType: BuildType.SendAndConfirmTx,
     };

@@ -12,6 +12,7 @@ export type ProgramInitAdminGroupParams = anchor.IdlTypes<ByrealClmm>["initAdmin
 // 合约状态数据类型
 export type ProgramAmmAdminGroupAccountData = anchor.IdlTypes<ByrealClmm>["ammAdminGroup"];
 export type ProgramAmmConfigAccountData = anchor.IdlTypes<ByrealClmm>["ammConfig"];
+export type ProgramSupportMintAssociatedAccountData = anchor.IdlTypes<ByrealClmm>["supportMintAssociated"];
 
 
 export interface InitAdminGroupParams extends BaseActionParams {
@@ -36,6 +37,13 @@ export interface CreateAmmConfigParams extends BaseActionParams {
   tradeFeeRate: number,
   protocolFeeRate: number,
   fundFeeRate: number
+}
+
+export interface CreateSupportMintAssociatedParams extends BaseActionParams {
+  owner: PublicKey,
+  ownerKeypair?: Keypair,
+
+  tokenMint: PublicKey,
 }
 
 // 辅助类型参数
