@@ -10,6 +10,7 @@ use crate::util::get_recent_epoch;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::token_interface::Mint;
+use spl_token_2022::solana_zk_sdk::encryption::pedersen::H;
 #[cfg(feature = "enable-log")]
 use std::convert::identity;
 use std::ops::{BitAnd, BitOr, BitXor};
@@ -137,8 +138,20 @@ pub struct PoolState {
     // account recent update epoch
     pub recent_epoch: u64,
 
+    /// dynamic flag
+    /// bit0, 1: use dynamic fee, 0: not use dynamic fee
+    /// bit1, 1: use dynamic fee on sell for mint0, 0: not use dynamic fee on sell for mint0
+    /// bit2, 1: use dynamic fee on sell for mint1, 0: not use dynamic fee on sell for mint1
+    pub dyn_fee_flag: u8,
+    /// The initial dynamic fee rate for the pool, in percentage.(1=1%)
+    pub dyn_fee_init_fee_rate: u8,
+    /// decrease rate for the dynamic fee, in percentage.(1=1%)
+    pub dyn_fee_decrease_rate: u8,
+    /// The interval for decreasing the dynamic fee, in seconds.
+    pub dyn_fee_decrease_interval: u8,
     // Unused bytes for future upgrades.
-    pub padding1: [u64; 24],
+    pub padding1_1: [u8; 4],
+    pub padding1: [u64; 23],
     pub padding2: [u64; 32],
 }
 
@@ -230,11 +243,133 @@ impl PoolState {
         self.fund_fees_token_1 = 0;
         self.open_time = open_time;
         self.recent_epoch = get_recent_epoch()?;
-        self.padding1 = [0; 24];
+        self.dyn_fee_flag = 0; // default, don't use dynamic fee
+        self.padding1_1 = [0; 4];
+        self.padding1 = [0; 23];
         self.padding2 = [0; 32];
         self.observation_key = observation_state_key;
 
         Ok(())
+    }
+
+    /// Initialize dynamic fee parameters
+    pub fn initialize_dyn_fee(
+        &mut self,
+        on_sell_mint0: bool,
+        on_sell_mint1: bool,
+        init_rate: u8,
+        decrease_rate: u8,
+        decrease_interval: u8,
+    ) -> Result<()> {
+        // set dynamic fee flag
+        self.dyn_fee_flag = 1;
+
+        if !on_sell_mint0 && !on_sell_mint1 {
+            return err!(ErrorCode::DynFeeNeitherOnSellMint0NorMint1);
+        } else {
+            if on_sell_mint0 {
+                self.dyn_fee_flag |= 1 << 1;
+            }
+            if on_sell_mint1 {
+                self.dyn_fee_flag |= 1 << 2;
+            }
+        }
+
+        self.dyn_fee_init_fee_rate = init_rate;
+        self.dyn_fee_decrease_rate = decrease_rate;
+        self.dyn_fee_decrease_interval = decrease_interval;
+
+        Ok(())
+    }
+
+    /// disable dynamic fee config
+    pub fn disable_dyn_fee(&mut self) -> Result<()> {
+        self.dyn_fee_flag &= !(1 << 0);
+        Ok(())
+    }
+
+    /// Check if the pool is using dynamic fee
+    pub fn is_dyn_fee_enabled(&self) -> bool {
+        self.dyn_fee_flag & (1 << 0) != 0
+    }
+
+    /// Get the dynamic fee rate based on the current time, in hunderedths of a bip (10^-6).
+    pub fn get_dyn_fee_rate(&self, current_timestamp: u64) -> u32 {
+        if !self.is_dyn_fee_enabled() {
+            return 0u32;
+        }
+
+        // not open yet
+        if current_timestamp < self.open_time {
+            return 0u32;
+        }
+
+        let interval_count =
+            (current_timestamp - self.open_time) / self.dyn_fee_decrease_interval as u64;
+
+        // (1-x)^c = 1 - cx + c(c-1)/2 x^2 - c(c-1)(c-2)/6 x^3
+        // x = self.dyn_fee_decrease_rate / 100
+        // c = interval_count
+        // extends 1/100 into 10^4/10^6, so
+        // 1 - cx + c(c-1)/2 x^2 - c(c-1)(c-2)/6 x^3
+        // = 10^6 * (1 - cx + c(c-1)/2 x^2 - c(c-1)(c-2)/6 x^3) / 10^6
+        // = 10^6 -10^6*cx + 10^6*c(c-1)/2 x^2 - 10^6*c(c-1)(c-2)/6 x^3
+        let dyn_fee_decrease_rate = self.dyn_fee_decrease_rate as u64 * 10_000;
+
+        // 10^6
+        let hundredths_of_a_bip = 1_000_000u64;
+        let mut rate = hundredths_of_a_bip;
+
+        if interval_count > 0 {
+            // -10^6*cx
+            rate = rate
+                .checked_sub(dyn_fee_decrease_rate.checked_mul(interval_count).unwrap())
+                .unwrap();
+        } else if interval_count > 1 {
+            // + 10^6*c(c-1)/2 x^2
+            rate = rate
+                .checked_add(
+                    hundredths_of_a_bip
+                        .checked_mul(interval_count)
+                        .unwrap()
+                        .checked_mul(interval_count - 1)
+                        .unwrap()
+                        .checked_div(2)
+                        .unwrap()
+                        .mul_div_ceil(dyn_fee_decrease_rate, hundredths_of_a_bip)
+                        .unwrap()
+                        .mul_div_ceil(dyn_fee_decrease_rate, hundredths_of_a_bip)
+                        .unwrap(),
+                )
+                .unwrap();
+        } else if interval_count > 2 {
+            // - 10^6*c(c-1)(c-2)/6 x^3
+            rate = rate
+                .checked_sub(
+                    hundredths_of_a_bip
+                        .checked_mul(interval_count)
+                        .unwrap()
+                        .checked_mul(interval_count - 1)
+                        .unwrap()
+                        .checked_mul(interval_count - 2)
+                        .unwrap()
+                        .checked_div(6)
+                        .unwrap()
+                        .mul_div_ceil(dyn_fee_decrease_rate, hundredths_of_a_bip)
+                        .unwrap()
+                        .mul_div_ceil(dyn_fee_decrease_rate, hundredths_of_a_bip)
+                        .unwrap()
+                        .mul_div_ceil(dyn_fee_decrease_rate, hundredths_of_a_bip)
+                        .unwrap(),
+                )
+                .unwrap();
+        }
+
+        rate = rate
+            .mul_div_ceil(self.dyn_fee_init_fee_rate as u64, 100u64)
+            .unwrap();
+
+        rate as u32
     }
 
     pub fn initialize_reward(
@@ -1682,7 +1817,7 @@ pub mod pool_test {
             let fund_fees_token_1: u64 = 0x1230456789abcdef;
             let pool_open_time: u64 = 0x1203456789abcdef;
             let recent_epoch: u64 = 0x1023456789abcdef;
-            let mut padding1: [u64; 24] = [0u64; 24];
+            let mut padding1: [u64; 23] = [0u64; 23];
             let mut padding1_data = [0u8; 8 * 24];
             let mut offset = 0;
             for i in 0..24 {

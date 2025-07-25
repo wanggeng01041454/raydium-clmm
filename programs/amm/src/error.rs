@@ -112,4 +112,7 @@ pub enum ErrorCode {
     IllegalAccountOwner,
     #[msg("Invalid account")]
     InvalidAccount,
+
+    #[msg("Invalid dynamic fee params")]
+    DynFeeNeitherOnSellMint0NorMint1,
 }
